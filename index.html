@@ -1,1 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio 7 | Booking</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a1a; color: white; }
+        .card { background: #2a2a2a; padding: 20px; border-radius: 10px; display: inline-block; }
+        input, button { margin: 10px; padding: 10px; border-radius: 5px; border: none; }
+        button { background: #007bff; color: white; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
 
+    <h1>Studio 7</h1>
+    <div class="card">
+        <h3>Book an Appointment</h3>
+        <input type="text" id="name" placeholder="Your Name"><br>
+        <input type="datetime-local" id="date"><br>
+        <button id="bookBtn">Confirm Booking</button>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // Your Firebase info you just pasted
+        const firebaseConfig = {
+            apiKey: "AIzaSyAD6aJV973blSKgMe8X-VUrqAw3yUYxYO8",
+            authDomain: "studiobooking-b570c.firebaseapp.com",
+            projectId: "studiobooking-b570c",
+            storageBucket: "studiobooking-b570c.firebasestorage.app",
+            messagingSenderId: "702140025097",
+            appId: "1:702140025097:web:5361b4c69122857b8cabd8",
+            measurementId: "G-P6FY9H6GMN"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        document.getElementById('bookBtn').onclick = async () => {
+            const name = document.getElementById('name').value;
+            const date = document.getElementById('date').value;
+
+            try {
+                await addDoc(collection(db, "bookings"), {
+                    customerName: name,
+                    appointmentDate: date,
+                    timestamp: new Date()
+                });
+                alert("Booking sent to Studio 7 database!");
+            } catch (e) {
+                console.error("Error: ", e);
+                alert("Error: " + e.message);
+            }
+        };
+    </script>
+</body>
+</html>
