@@ -20,7 +20,7 @@
         
         .about-timings { margin-top: 20px; color: #aaa; font-size: 0.9rem; line-height: 1.6; border-left: 2px solid var(--gold); padding-left: 15px; }
 
-        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); position: relative; }
+        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         h3 { font-size: 1.5rem; margin-bottom: 25px; color: var(--gold); border-left: 4px solid var(--gold); padding-left: 15px; }
         
         label { display: block; margin-bottom: 10px; font-size: 0.75rem; font-weight: 700; color: #777; text-transform: uppercase; }
@@ -28,20 +28,18 @@
         input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-        /* BUTTON STYLES */
         button { width: 100%; padding: 18px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-size: 1rem; }
         button:hover:not(:disabled) { background: #fff; transform: scale(1.02); }
         
         .track-btn { background: transparent; border: 2px solid var(--gold); color: var(--gold); margin-top: 15px; }
         .track-btn:hover { background: var(--gold); color: black; }
 
-        .disclaimer { background: rgba(212, 175, 55, 0.1); padding: 15px; border-radius: 10px; font-size: 0.8rem; color: #ccc; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.3); }
-        .disclaimer b { color: var(--gold); }
+        .disclaimer { background: rgba(212, 175, 55, 0.08); padding: 15px; border-radius: 10px; font-size: 0.8rem; color: #bbb; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2); line-height: 1.4; }
+        .disclaimer b { color: var(--gold); display: block; margin-bottom: 5px; }
 
         .lookup-link { text-align: center; margin-top: 20px; }
         .lookup-link a { color: #888; text-decoration: underline; font-size: 0.8rem; cursor: pointer; }
 
-        /* Status Results UI */
         #statusResults { margin-top: 15px; font-size: 0.9rem; }
         .status-item { background: #222; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid var(--gold); }
         .stat-tag { font-weight: bold; text-transform: uppercase; font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; }
@@ -67,18 +65,25 @@
                 <strong>OPERATING HOURS</strong><br>
                 Mon - Thu: 9:00 AM — 7:00 PM<br>
                 Fri - Sun: 9:00 AM — 10:00 PM<br><br>
-                <em>Check our live scheduler for real-time availability.</em>
+                <em>Reserve your session below. Our scheduler only shows available slots.</em>
             </div>
         </section>
 
         <section class="booking-card">
             <div id="bookingFormSection">
                 <h3>Book Your Session</h3>
+                
+                <div class="disclaimer">
+                    <b>HOW IT WORKS:</b>
+                    After submitting, your request will be <u>Pending</u>. Come back to this site and click <b>Track Reservation</b> to see if you've been approved. 
+                    <small>(No automated emails are sent)</small>
+                </div>
+
                 <label>Full Name</label>
                 <input type="text" id="name" placeholder="Artist Name">
                 
                 <label>Email Address</label>
-                <input type="email" id="email" placeholder="Used for status tracking">
+                <input type="email" id="email" placeholder="Required for status tracking">
 
                 <label>Select Date</label>
                 <input type="date" id="datePicker">
@@ -95,16 +100,16 @@
                 </div>
                 
                 <button id="bookBtn">Reserve Space</button>
-                
                 <button class="track-btn" onclick="showLookup()">Track Reservation Status</button>
             </div>
 
             <div id="lookupSection" style="display:none;">
                 <h3>Status Tracker</h3>
                 <div class="disclaimer">
-                    <b>Note:</b> We do not send automated emails. Please use this tool to check if your booking has been <b>Approved</b> by the Studio 7 team.
+                    <b>CHECKING YOUR STATUS:</b>
+                    Enter the email you used to book. If your status is <b>Confirmed</b>, your session is officially locked in!
                 </div>
-                <label>Enter your registered email</label>
+                <label>Registered Email</label>
                 <input type="email" id="lookupEmail" placeholder="email@example.com">
                 <button id="lookupBtn">Check Status</button>
                 
@@ -179,16 +184,19 @@
         timeSlot.onchange = updateDurationOptions;
 
         bookBtn.onclick = async () => {
+            const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const rawHour = timeSlot.value;
-            if(!email || !rawHour) return alert("Please complete the form!");
+            if(!name || !email || !rawHour) return alert("Please complete the form!");
 
             let h = parseInt(rawHour);
             const formattedTime = (h > 12 ? h - 12 : (h === 0 ? 12 : h)) + ":00" + (h >= 12 ? " PM" : " AM");
 
+            bookBtn.disabled = true;
+
             try {
                 await addDoc(collection(db, "bookings"), {
-                    customerName: document.getElementById('name').value,
+                    customerName: name,
                     customerEmail: email.toLowerCase(),
                     bookingDate: datePicker.value,
                     startTime: formattedTime,
@@ -196,12 +204,11 @@
                     status: "pending",
                     timestamp: new Date()
                 });
-                alert("Request Sent! Check status later.");
+                alert("Request Sent! Use the Tracker button to check back later.");
                 location.reload();
-            } catch (e) { alert(e.message); }
+            } catch (e) { alert(e.message); bookBtn.disabled = false; }
         };
 
-        // NAV LOGIC
         window.showLookup = () => {
             document.getElementById('bookingFormSection').style.display = 'none';
             document.getElementById('lookupSection').style.display = 'block';
@@ -214,7 +221,7 @@
         document.getElementById('lookupBtn').onclick = async () => {
             const email = document.getElementById('lookupEmail').value.toLowerCase();
             const resultsDiv = document.getElementById('statusResults');
-            resultsDiv.innerHTML = 'Searching database...';
+            resultsDiv.innerHTML = 'Searching...';
 
             const q = query(collection(db, "bookings"), where("customerEmail", "==", email));
             const querySnapshot = await getDocs(q);
@@ -230,7 +237,7 @@
                 resultsDiv.innerHTML += `
                     <div class="status-item">
                         <strong>Date: ${data.bookingDate}</strong><br>
-                        Time: ${data.startTime} (${data.duration})<br>
+                        Time: ${data.startTime}<br>
                         Status: <span class="stat-tag ${data.status}">${data.status}</span>
                     </div>
                 `;
