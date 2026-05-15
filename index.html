@@ -17,29 +17,19 @@
         .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
         .gallery img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; border: 1px solid #333; }
         .gallery .main-img { grid-column: span 2; height: 350px; }
+        
+        .about-timings { margin-top: 20px; color: #aaa; font-size: 0.9rem; line-height: 1.6; border-left: 2px solid var(--gold); padding-left: 15px; }
 
         .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         h3 { font-size: 1.5rem; margin-bottom: 25px; color: var(--gold); border-left: 4px solid var(--gold); padding-left: 15px; }
         
         label { display: block; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; color: #777; text-transform: uppercase; }
         
-        input#datePicker { 
-            font-size: 1.2rem; 
-            padding: 18px; 
-            background: #333; 
-            border: 2px solid var(--gold); 
-            cursor: pointer;
-            color-scheme: dark;
-        }
-        
+        input#datePicker { font-size: 1.2rem; padding: 18px; background: #333; border: 2px solid var(--gold); cursor: pointer; color-scheme: dark; }
         input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-        button { 
-            width: 100%; padding: 20px; background: var(--gold); border: none; color: black; 
-            font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; 
-            transition: all 0.3s ease; font-size: 1.1rem;
-        }
+        button { width: 100%; padding: 20px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-size: 1.1rem; }
         button:hover:not(:disabled) { background: #fff; transform: scale(1.02); }
         button:disabled { background: #444; color: #888; cursor: not-allowed; }
     </style>
@@ -57,6 +47,12 @@
                 <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800" class="main-img">
                 <img src="https://images.unsplash.com/photo-1520529277867-dbf8c5e0b340?auto=format&fit=crop&w=400">
                 <img src="https://images.unsplash.com/photo-1514320291840-2e0a9bf289ad?auto=format&fit=crop&w=400">
+            </div>
+            <div class="about-timings">
+                <strong>OPERATING HOURS</strong><br>
+                Mon - Thu: 9:00 AM — 9:00 PM<br>
+                Fri - Sun: 9:00 AM — 11:00 PM<br><br>
+                <em>All bookings are subject to approval. Our smart scheduler only shows available slots to ensure a seamless experience.</em>
             </div>
         </section>
 
@@ -83,6 +79,8 @@
                         <option value="2">2 Hours</option>
                         <option value="3">3 Hours</option>
                         <option value="4">4 Hours</option>
+                        <option value="5">5 Hours</option>
+                        <option value="6">6 Hours</option>
                     </select>
                 </div>
             </div>
@@ -112,10 +110,17 @@
 
         const datePicker = document.getElementById('datePicker');
         const timeSlot = document.getElementById('timeSlot');
+        const durationSelect = document.getElementById('duration');
         const bookBtn = document.getElementById('bookBtn');
         const btnText = document.getElementById('btnText');
 
         datePicker.min = new Date().toISOString().split("T")[0];
+
+        // GLOBAL CLOSING TIME HELPER
+        function getClosingHour(day) {
+            if (day >= 5 || day === 0) return 23; // Fri, Sat, Sun: 11pm
+            return 21; // Mon - Thu: 9pm
+        }
 
         datePicker.onchange = async () => {
             const dateStr = datePicker.value;
@@ -126,55 +131,68 @@
             timeSlot.innerHTML = '<option>Checking availability...</option>';
             bookBtn.disabled = true;
 
-            // 1. Fetch bookings already made for this specific date
             const q = query(collection(db, "bookings"), where("bookingDate", "==", dateStr));
             const querySnapshot = await getDocs(q);
             const takenTimes = [];
             querySnapshot.forEach(doc => {
-                // We only block times that are NOT denied
-                if(doc.data().status !== "denied") {
-                    takenTimes.push(doc.data().startTime);
-                }
+                if(doc.data().status !== "denied") { takenTimes.push(doc.data().startTime); }
             });
 
             timeSlot.innerHTML = '';
-            
-            if (day === 0 || day === 6) {
-                timeSlot.add(new Option("Weekends Closed", ""));
-                return;
-            }
-
             bookBtn.disabled = false;
+
             const startHour = 9;
-            const endHour = (day === 5) ? 22 : 20; 
+            const endHour = getClosingHour(day); 
 
             for (let i = startHour; i < endHour; i++) {
                 let suffix = i >= 12 ? " PM" : " AM";
                 let displayHour = i > 12 ? i - 12 : i;
-                if (i === 0) displayHour = 12;
+                if (displayHour === 0) displayHour = 12;
                 const timeLabel = displayHour + ":00" + suffix;
                 
-                // 2. Only show the time if it's not in the 'takenTimes' list
                 if (!takenTimes.includes(timeLabel)) {
-                    timeSlot.add(new Option(timeLabel, timeLabel));
+                    const opt = new Option(timeLabel, i); // Value is raw 24h hour
+                    timeSlot.add(opt);
                 }
             }
-
-            if (timeSlot.options.length === 0) {
-                timeSlot.add(new Option("Fully Booked", ""));
-                bookBtn.disabled = true;
-            }
+            updateDurationOptions();
         };
+
+        // PREVENT BOOKING PAST CLOSING TIME
+        function updateDurationOptions() {
+            const startHour = parseInt(timeSlot.value);
+            if (isNaN(startHour)) return;
+
+            const dateStr = datePicker.value;
+            const dateParts = dateStr.split('-');
+            const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+            const closingHour = getClosingHour(selectedDate.getDay());
+            
+            const maxAvailable = closingHour - startHour;
+            
+            // Rebuild duration options up to 6 or the closing hour
+            durationSelect.innerHTML = '';
+            for (let i = 1; i <= Math.min(6, maxAvailable); i++) {
+                durationSelect.add(new Option(i + (i === 1 ? " Hour" : " Hours"), i));
+            }
+        }
+
+        timeSlot.onchange = updateDurationOptions;
 
         bookBtn.onclick = async () => {
             const name = document.getElementById('name').value;
             const date = datePicker.value;
-            const time = timeSlot.value;
-            const length = document.getElementById('duration').value;
+            const rawHour = timeSlot.value;
+            const length = durationSelect.value;
 
-            if(!name || !date || !time || time === "" || time === "Weekends Closed") {
-                return alert("Please fill everything out correctly!");
-            }
+            if(!name || !date || !rawHour) return alert("Please fill everything out!");
+
+            // Format hour for Firebase display
+            let h = parseInt(rawHour);
+            let suffix = h >= 12 ? " PM" : " AM";
+            let displayH = h > 12 ? h - 12 : h;
+            if (displayH === 0) displayH = 12;
+            const formattedTime = displayH + ":00" + suffix;
 
             bookBtn.disabled = true;
             btnText.innerText = "Processing...";
@@ -183,7 +201,7 @@
                 await addDoc(collection(db, "bookings"), {
                     customerName: name,
                     bookingDate: date,
-                    startTime: time,
+                    startTime: formattedTime,
                     duration: length + (length == 1 ? " hour" : " hours"),
                     studio: "Studio 7",
                     status: "pending",
@@ -192,10 +210,7 @@
                 
                 btnText.innerText = "Success!";
                 alert("Request sent! Check back later for confirmation.");
-                
-                setTimeout(() => {
-                    location.reload(); // Refresh to clear form and update slots
-                }, 2000);
+                location.reload();
 
             } catch (e) {
                 alert("Error: " + e.message);
