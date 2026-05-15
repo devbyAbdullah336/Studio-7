@@ -20,7 +20,7 @@
         
         .about-timings { margin-top: 20px; color: #aaa; font-size: 0.9rem; line-height: 1.6; border-left: 2px solid var(--gold); padding-left: 15px; }
 
-        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
+        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); position: relative; }
         h3 { font-size: 1.5rem; margin-bottom: 25px; color: var(--gold); border-left: 4px solid var(--gold); padding-left: 15px; }
         
         label { display: block; margin-bottom: 10px; font-size: 0.75rem; font-weight: 700; color: #777; text-transform: uppercase; }
@@ -28,16 +28,23 @@
         input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
+        /* BUTTON STYLES */
         button { width: 100%; padding: 18px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-size: 1rem; }
         button:hover:not(:disabled) { background: #fff; transform: scale(1.02); }
         
-        .lookup-link { text-align: center; margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; }
-        .lookup-link a { color: var(--gold); text-decoration: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+        .track-btn { background: transparent; border: 2px solid var(--gold); color: var(--gold); margin-top: 15px; }
+        .track-btn:hover { background: var(--gold); color: black; }
+
+        .disclaimer { background: rgba(212, 175, 55, 0.1); padding: 15px; border-radius: 10px; font-size: 0.8rem; color: #ccc; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.3); }
+        .disclaimer b { color: var(--gold); }
+
+        .lookup-link { text-align: center; margin-top: 20px; }
+        .lookup-link a { color: #888; text-decoration: underline; font-size: 0.8rem; cursor: pointer; }
 
         /* Status Results UI */
-        #statusResults { margin-top: 15px; font-size: 0.9rem; display: none; }
-        .status-item { background: #222; padding: 10px; border-radius: 8px; margin-top: 10px; border-left: 3px solid var(--gold); }
-        .stat-tag { font-weight: bold; text-transform: uppercase; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; }
+        #statusResults { margin-top: 15px; font-size: 0.9rem; }
+        .status-item { background: #222; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid var(--gold); }
+        .stat-tag { font-weight: bold; text-transform: uppercase; font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; }
         .pending { background: #555; color: #fff; }
         .confirmed { background: #2ecc71; color: #000; }
     </style>
@@ -60,7 +67,7 @@
                 <strong>OPERATING HOURS</strong><br>
                 Mon - Thu: 9:00 AM — 7:00 PM<br>
                 Fri - Sun: 9:00 AM — 10:00 PM<br><br>
-                <em>Reserve your session below. Our smart scheduler ensures bookings never exceed operating hours.</em>
+                <em>Check our live scheduler for real-time availability.</em>
             </div>
         </section>
 
@@ -68,10 +75,10 @@
             <div id="bookingFormSection">
                 <h3>Book Your Session</h3>
                 <label>Full Name</label>
-                <input type="text" id="name" placeholder="Artist / Client Name">
+                <input type="text" id="name" placeholder="Artist Name">
                 
                 <label>Email Address</label>
-                <input type="email" id="email" placeholder="email@example.com">
+                <input type="email" id="email" placeholder="Used for status tracking">
 
                 <label>Select Date</label>
                 <input type="date" id="datePicker">
@@ -87,21 +94,24 @@
                     </div>
                 </div>
                 
-                <button id="bookBtn"><span id="btnText">Reserve Space</span></button>
-
-                <div class="lookup-link">
-                    <a onclick="showLookup()">Already booked? Check your status</a>
-                </div>
+                <button id="bookBtn">Reserve Space</button>
+                
+                <button class="track-btn" onclick="showLookup()">Track Reservation Status</button>
             </div>
 
             <div id="lookupSection" style="display:none;">
-                <h3>Check Status</h3>
-                <label>Enter your email</label>
+                <h3>Status Tracker</h3>
+                <div class="disclaimer">
+                    <b>Note:</b> We do not send automated emails. Please use this tool to check if your booking has been <b>Approved</b> by the Studio 7 team.
+                </div>
+                <label>Enter your registered email</label>
                 <input type="email" id="lookupEmail" placeholder="email@example.com">
-                <button id="lookupBtn">Track Reservation</button>
+                <button id="lookupBtn">Check Status</button>
+                
                 <div id="statusResults"></div>
+                
                 <div class="lookup-link">
-                    <a onclick="showBooking()">Back to booking</a>
+                    <a onclick="showBooking()">← Back to Booking Form</a>
                 </div>
             </div>
         </section>
@@ -109,7 +119,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAD6aJV973blSKgMe8X-VUrqAw3yUYxYO8",
@@ -141,7 +151,7 @@
             const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
             const day = selectedDate.getDay(); 
             
-            timeSlot.innerHTML = '<option>Checking availability...</option>';
+            timeSlot.innerHTML = '<option>Checking slots...</option>';
             const q = query(collection(db, "bookings"), where("bookingDate", "==", dateStr));
             const querySnapshot = await getDocs(q);
             const takenTimes = [];
@@ -168,11 +178,10 @@
         }
         timeSlot.onchange = updateDurationOptions;
 
-        // BOOKING ACTION
         bookBtn.onclick = async () => {
             const email = document.getElementById('email').value;
             const rawHour = timeSlot.value;
-            if(!email || !rawHour) return alert("Please fill everything out!");
+            if(!email || !rawHour) return alert("Please complete the form!");
 
             let h = parseInt(rawHour);
             const formattedTime = (h > 12 ? h - 12 : (h === 0 ? 12 : h)) + ":00" + (h >= 12 ? " PM" : " AM");
@@ -187,12 +196,12 @@
                     status: "pending",
                     timestamp: new Date()
                 });
-                alert("Request Sent!");
+                alert("Request Sent! Check status later.");
                 location.reload();
             } catch (e) { alert(e.message); }
         };
 
-        // LOOKUP LOGIC
+        // NAV LOGIC
         window.showLookup = () => {
             document.getElementById('bookingFormSection').style.display = 'none';
             document.getElementById('lookupSection').style.display = 'block';
@@ -205,14 +214,13 @@
         document.getElementById('lookupBtn').onclick = async () => {
             const email = document.getElementById('lookupEmail').value.toLowerCase();
             const resultsDiv = document.getElementById('statusResults');
-            resultsDiv.style.display = 'block';
-            resultsDiv.innerHTML = 'Searching...';
+            resultsDiv.innerHTML = 'Searching database...';
 
             const q = query(collection(db, "bookings"), where("customerEmail", "==", email));
             const querySnapshot = await getDocs(q);
             
             if (querySnapshot.empty) {
-                resultsDiv.innerHTML = 'No bookings found for this email.';
+                resultsDiv.innerHTML = 'No records found for this email.';
                 return;
             }
 
@@ -221,7 +229,8 @@
                 const data = doc.data();
                 resultsDiv.innerHTML += `
                     <div class="status-item">
-                        <strong>${data.bookingDate}</strong> at ${data.startTime}<br>
+                        <strong>Date: ${data.bookingDate}</strong><br>
+                        Time: ${data.startTime} (${data.duration})<br>
                         Status: <span class="stat-tag ${data.status}">${data.status}</span>
                     </div>
                 `;
