@@ -18,16 +18,33 @@
         .gallery img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; border: 1px solid #333; }
         .gallery .main-img { grid-column: span 2; height: 350px; }
 
-        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; }
+        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         h3 { font-size: 1.5rem; margin-bottom: 25px; color: var(--gold); border-left: 4px solid var(--gold); padding-left: 15px; }
         
-        label { display: block; margin-bottom: 8px; font-size: 0.75rem; font-weight: 700; color: #777; text-transform: uppercase; }
+        label { display: block; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; color: #777; text-transform: uppercase; }
+        
+        /* BIGGER CALENDAR STYLES */
+        input#datePicker { 
+            font-size: 1.2rem; 
+            padding: 18px; 
+            background: #333; 
+            border: 2px solid var(--gold); 
+            cursor: pointer;
+            color-scheme: dark; /* Makes the built-in calendar popup dark mode */
+        }
+        
         input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-        button { width: 100%; padding: 18px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: 0.3s; }
-        button:hover:not(:disabled) { background: #fff; transform: translateY(-2px); }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        button { 
+            width: 100%; padding: 20px; background: var(--gold); border: none; color: black; 
+            font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; 
+            transition: all 0.3s ease; font-size: 1.1rem;
+        }
+        button:hover:not(:disabled) { background: #fff; transform: scale(1.02); }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
+        
+        .loading-text { display: none; }
     </style>
 </head>
 <body>
@@ -52,14 +69,14 @@
             <label>Full Name</label>
             <input type="text" id="name" placeholder="Artist / Client Name">
             
-            <label>Date</label>
+            <label>Select Date (Click below)</label>
             <input type="date" id="datePicker">
             
             <div class="row">
                 <div>
                     <label>Start Time</label>
                     <select id="timeSlot">
-                        <option value="">Select Date First</option>
+                        <option value="">Pick Date First</option>
                     </select>
                 </div>
                 <div>
@@ -69,13 +86,13 @@
                         <option value="2">2 Hours</option>
                         <option value="3">3 Hours</option>
                         <option value="4">4 Hours</option>
-                        <option value="5">5 Hours</option>
-                        <option value="6">6 Hours</option>
                     </select>
                 </div>
             </div>
             
-            <button id="bookBtn">Reserve Space</button>
+            <button id="bookBtn">
+                <span id="btnText">Reserve Space</span>
+            </button>
         </section>
     </div>
 
@@ -99,6 +116,7 @@
         const datePicker = document.getElementById('datePicker');
         const timeSlot = document.getElementById('timeSlot');
         const bookBtn = document.getElementById('bookBtn');
+        const btnText = document.getElementById('btnText');
 
         datePicker.min = new Date().toISOString().split("T")[0];
 
@@ -110,13 +128,12 @@
             timeSlot.innerHTML = '';
             
             if (day === 0 || day === 6) {
-                const opt = new Option("Weekends Closed", "");
-                timeSlot.add(opt);
-                bookBtn.disabled = true; // LOCK THE BUTTON
+                timeSlot.add(new Option("Weekends Closed", ""));
+                bookBtn.disabled = true;
                 return;
             }
 
-            bookBtn.disabled = false; // UNLOCK BUTTON
+            bookBtn.disabled = false;
             const startHour = 9;
             const endHour = (day === 5) ? 22 : 20; 
 
@@ -124,10 +141,8 @@
                 let suffix = i >= 12 ? " PM" : " AM";
                 let displayHour = i > 12 ? i - 12 : i;
                 if (i === 0) displayHour = 12;
-                
                 const timeLabel = displayHour + ":00" + suffix;
-                const opt = new Option(timeLabel, timeLabel);
-                timeSlot.add(opt);
+                timeSlot.add(new Option(timeLabel, timeLabel));
             }
         };
 
@@ -137,10 +152,13 @@
             const time = timeSlot.value;
             const length = document.getElementById('duration').value;
 
-            // PREVENT SENDING IF CLOSED OR EMPTY
-            if(!name || !date || time === "" || time === "Weekends Closed") {
-                return alert("Please select a valid weekday and time.");
+            if(!name || !date || !time || time === "Weekends Closed") {
+                return alert("Please fill everything out correctly!");
             }
+
+            // ANTI-SPAM LOCK
+            bookBtn.disabled = true;
+            btnText.innerText = "Processing...";
 
             try {
                 await addDoc(collection(db, "bookings"), {
@@ -151,9 +169,20 @@
                     studio: "Studio 7",
                     timestamp: new Date()
                 });
-                alert("Confirmed! Studio 7 is yours for " + length + " hour(s).");
+                
+                btnText.innerText = "Success!";
+                alert("Confirmed! Your session is booked.");
+                
+                // Keep it disabled for 5 seconds to prevent spamming
+                setTimeout(() => {
+                    btnText.innerText = "Reserve Space";
+                    bookBtn.disabled = false;
+                }, 5000);
+
             } catch (e) {
                 alert("Error: " + e.message);
+                btnText.innerText = "Reserve Space";
+                bookBtn.disabled = false;
             }
         };
     </script>
