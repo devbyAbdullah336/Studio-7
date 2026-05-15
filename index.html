@@ -23,15 +23,23 @@
         .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
         h3 { font-size: 1.5rem; margin-bottom: 25px; color: var(--gold); border-left: 4px solid var(--gold); padding-left: 15px; }
         
-        label { display: block; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; color: #777; text-transform: uppercase; }
+        label { display: block; margin-bottom: 10px; font-size: 0.75rem; font-weight: 700; color: #777; text-transform: uppercase; }
         
-        input#datePicker { font-size: 1.2rem; padding: 18px; background: #333; border: 2px solid var(--gold); cursor: pointer; color-scheme: dark; }
         input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-        button { width: 100%; padding: 20px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-size: 1.1rem; }
+        button { width: 100%; padding: 18px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; font-size: 1rem; }
         button:hover:not(:disabled) { background: #fff; transform: scale(1.02); }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        
+        .lookup-link { text-align: center; margin-top: 25px; border-top: 1px solid #333; padding-top: 20px; }
+        .lookup-link a { color: var(--gold); text-decoration: none; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+
+        /* Status Results UI */
+        #statusResults { margin-top: 15px; font-size: 0.9rem; display: none; }
+        .status-item { background: #222; padding: 10px; border-radius: 8px; margin-top: 10px; border-left: 3px solid var(--gold); }
+        .stat-tag { font-weight: bold; text-transform: uppercase; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; }
+        .pending { background: #555; color: #fff; }
+        .confirmed { background: #2ecc71; color: #000; }
     </style>
 </head>
 <body>
@@ -57,43 +65,51 @@
         </section>
 
         <section class="booking-card">
-            <h3>Book Your Session</h3>
-            
-            <label>Full Name</label>
-            <input type="text" id="name" placeholder="Artist / Client Name">
-            
-            <label>Select Date</label>
-            <input type="date" id="datePicker">
-            
-            <div class="row">
-                <div>
-                    <label>Start Time</label>
-                    <select id="timeSlot">
-                        <option value="">Pick Date First</option>
-                    </select>
+            <div id="bookingFormSection">
+                <h3>Book Your Session</h3>
+                <label>Full Name</label>
+                <input type="text" id="name" placeholder="Artist / Client Name">
+                
+                <label>Email Address</label>
+                <input type="email" id="email" placeholder="email@example.com">
+
+                <label>Select Date</label>
+                <input type="date" id="datePicker">
+                
+                <div class="row">
+                    <div>
+                        <label>Start Time</label>
+                        <select id="timeSlot"><option value="">Pick Date First</option></select>
+                    </div>
+                    <div>
+                        <label>Duration</label>
+                        <select id="duration"></select>
+                    </div>
                 </div>
-                <div>
-                    <label>Duration</label>
-                    <select id="duration">
-                        <option value="1">1 Hour</option>
-                        <option value="2">2 Hours</option>
-                        <option value="3">3 Hours</option>
-                        <option value="4">4 Hours</option>
-                        <option value="5">5 Hours</option>
-                        <option value="6">6 Hours</option>
-                    </select>
+                
+                <button id="bookBtn"><span id="btnText">Reserve Space</span></button>
+
+                <div class="lookup-link">
+                    <a onclick="showLookup()">Already booked? Check your status</a>
                 </div>
             </div>
-            
-            <button id="bookBtn">
-                <span id="btnText">Reserve Space</span>
-            </button>
+
+            <div id="lookupSection" style="display:none;">
+                <h3>Check Status</h3>
+                <label>Enter your email</label>
+                <input type="email" id="lookupEmail" placeholder="email@example.com">
+                <button id="lookupBtn">Track Reservation</button>
+                <div id="statusResults"></div>
+                <div class="lookup-link">
+                    <a onclick="showBooking()">Back to booking</a>
+                </div>
+            </div>
         </section>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAD6aJV973blSKgMe8X-VUrqAw3yUYxYO8",
@@ -112,14 +128,11 @@
         const timeSlot = document.getElementById('timeSlot');
         const durationSelect = document.getElementById('duration');
         const bookBtn = document.getElementById('bookBtn');
-        const btnText = document.getElementById('btnText');
 
         datePicker.min = new Date().toISOString().split("T")[0];
 
-        // NEW OPERATING HOURS HELPER
         function getClosingHour(day) {
-            if (day >= 5 || day === 0) return 22; // Fri, Sat, Sun: 10 PM
-            return 19; // Mon - Thu: 7 PM
+            return (day >= 5 || day === 0) ? 22 : 19;
         }
 
         datePicker.onchange = async () => {
@@ -129,91 +142,90 @@
             const day = selectedDate.getDay(); 
             
             timeSlot.innerHTML = '<option>Checking availability...</option>';
-            bookBtn.disabled = true;
-
             const q = query(collection(db, "bookings"), where("bookingDate", "==", dateStr));
             const querySnapshot = await getDocs(q);
             const takenTimes = [];
-            querySnapshot.forEach(doc => {
-                if(doc.data().status !== "denied") { takenTimes.push(doc.data().startTime); }
-            });
+            querySnapshot.forEach(doc => { if(doc.data().status !== "denied") takenTimes.push(doc.data().startTime); });
 
             timeSlot.innerHTML = '';
-            bookBtn.disabled = false;
-
-            const startHour = 9;
-            const endHour = getClosingHour(day); 
-
-            for (let i = startHour; i < endHour; i++) {
+            for (let i = 9; i < getClosingHour(day); i++) {
                 let suffix = i >= 12 ? " PM" : " AM";
-                let displayHour = i > 12 ? i - 12 : i;
-                if (displayHour === 0) displayHour = 12;
+                let displayHour = i > 12 ? i - 12 : (i === 0 ? 12 : i);
                 const timeLabel = displayHour + ":00" + suffix;
-                
-                if (!takenTimes.includes(timeLabel)) {
-                    const opt = new Option(timeLabel, i);
-                    timeSlot.add(opt);
-                }
+                if (!takenTimes.includes(timeLabel)) timeSlot.add(new Option(timeLabel, i));
             }
             updateDurationOptions();
         };
 
         function updateDurationOptions() {
             const startHour = parseInt(timeSlot.value);
-            if (isNaN(startHour)) return;
-
-            const dateStr = datePicker.value;
-            const dateParts = dateStr.split('-');
-            const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-            const closingHour = getClosingHour(selectedDate.getDay());
-            
-            const maxAvailable = closingHour - startHour;
-            
+            const selectedDate = new Date(datePicker.value.replace(/-/g, '\/'));
+            const maxAvailable = getClosingHour(selectedDate.getDay()) - startHour;
             durationSelect.innerHTML = '';
             for (let i = 1; i <= Math.min(6, maxAvailable); i++) {
                 durationSelect.add(new Option(i + (i === 1 ? " Hour" : " Hours"), i));
             }
         }
-
         timeSlot.onchange = updateDurationOptions;
 
+        // BOOKING ACTION
         bookBtn.onclick = async () => {
-            const name = document.getElementById('name').value;
-            const date = datePicker.value;
+            const email = document.getElementById('email').value;
             const rawHour = timeSlot.value;
-            const length = durationSelect.value;
-
-            if(!name || !date || !rawHour) return alert("Please fill everything out!");
+            if(!email || !rawHour) return alert("Please fill everything out!");
 
             let h = parseInt(rawHour);
-            let suffix = h >= 12 ? " PM" : " AM";
-            let displayH = h > 12 ? h - 12 : h;
-            if (displayH === 0) displayH = 12;
-            const formattedTime = displayH + ":00" + suffix;
-
-            bookBtn.disabled = true;
-            btnText.innerText = "Processing...";
+            const formattedTime = (h > 12 ? h - 12 : (h === 0 ? 12 : h)) + ":00" + (h >= 12 ? " PM" : " AM");
 
             try {
                 await addDoc(collection(db, "bookings"), {
-                    customerName: name,
-                    bookingDate: date,
+                    customerName: document.getElementById('name').value,
+                    customerEmail: email.toLowerCase(),
+                    bookingDate: datePicker.value,
                     startTime: formattedTime,
-                    duration: length + (length == 1 ? " hour" : " hours"),
-                    studio: "Studio 7",
+                    duration: durationSelect.value + " hours",
                     status: "pending",
                     timestamp: new Date()
                 });
-                
-                btnText.innerText = "Success!";
-                alert("Request sent! Check back later for confirmation.");
+                alert("Request Sent!");
                 location.reload();
+            } catch (e) { alert(e.message); }
+        };
 
-            } catch (e) {
-                alert("Error: " + e.message);
-                btnText.innerText = "Reserve Space";
-                bookBtn.disabled = false;
+        // LOOKUP LOGIC
+        window.showLookup = () => {
+            document.getElementById('bookingFormSection').style.display = 'none';
+            document.getElementById('lookupSection').style.display = 'block';
+        };
+        window.showBooking = () => {
+            document.getElementById('bookingFormSection').style.display = 'block';
+            document.getElementById('lookupSection').style.display = 'none';
+        };
+
+        document.getElementById('lookupBtn').onclick = async () => {
+            const email = document.getElementById('lookupEmail').value.toLowerCase();
+            const resultsDiv = document.getElementById('statusResults');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = 'Searching...';
+
+            const q = query(collection(db, "bookings"), where("customerEmail", "==", email));
+            const querySnapshot = await getDocs(q);
+            
+            if (querySnapshot.empty) {
+                resultsDiv.innerHTML = 'No bookings found for this email.';
+                return;
             }
+
+            resultsDiv.innerHTML = '';
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                resultsDiv.innerHTML += `
+                    <div class="status-item">
+                        <strong>${data.bookingDate}</strong> at ${data.startTime}<br>
+                        Status: <span class="stat-tag ${data.status}">${data.status}</span>
+                    </div>
+                `;
+            });
         };
     </script>
 </body>
