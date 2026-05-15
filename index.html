@@ -6,57 +6,53 @@
     <title>Studio 7 | Premium Booking</title>
     <style>
         :root { --gold: #d4af37; --dark: #0a0a0a; --card: #161616; --input: #252525; }
-        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--dark); color: white; margin: 0; padding: 20px; line-height: 1.6; }
-        header { text-align: center; padding: 60px 0 30px; }
-        h1 { font-size: 3.5rem; letter-spacing: 8px; color: var(--gold); margin: 0; font-weight: 800; }
-        p.subtitle { color: #888; text-transform: uppercase; letter-spacing: 2px; font-size: 0.9rem; }
+        body { font-family: 'Inter', sans-serif; background: var(--dark); color: white; margin: 0; padding: 20px; }
+        header { text-align: center; padding: 50px 0 20px; }
+        h1 { font-size: clamp(2rem, 8vw, 3.5rem); letter-spacing: 8px; color: var(--gold); margin: 0; font-weight: 800; }
+        p.subtitle { color: #888; text-transform: uppercase; letter-spacing: 2px; font-size: 0.8rem; }
         
         .container { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1.2fr 1fr; gap: 40px; }
         @media (max-width: 850px) { .container { grid-template-columns: 1fr; } }
 
-        /* Gallery */
         .gallery { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
-        .gallery img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; transition: 0.3s; grayscale: 50%; }
-        .gallery img:hover { grayscale: 0%; transform: scale(1.02); }
+        .gallery img { width: 100%; height: 200px; object-fit: cover; border-radius: 12px; border: 1px solid #333; }
         .gallery .main-img { grid-column: span 2; height: 350px; }
 
-        /* Booking Form */
-        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-        h3 { font-size: 1.5rem; margin-bottom: 25px; color: var(--gold); }
+        .booking-card { background: var(--card); padding: 40px; border-radius: 24px; border: 1px solid #333; }
+        h3 { font-size: 1.5rem; margin-bottom: 25px; color: var(--gold); border-left: 4px solid var(--gold); padding-left: 15px; }
         
-        label { display: block; margin-bottom: 8px; font-size: 0.85rem; font-weight: 600; color: #aaa; text-transform: uppercase; }
-        input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; outline: none; }
-        input:focus, select:focus { border-color: var(--gold); }
-        
+        label { display: block; margin-bottom: 8px; font-size: 0.75rem; font-weight: 700; color: #777; text-transform: uppercase; }
+        input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
         .row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
 
-        button { width: 100%; padding: 18px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-radius: 10px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        button:hover { background: #f1c40f; box-shadow: 0 0 20px rgba(212, 175, 55, 0.3); }
+        button { width: 100%; padding: 18px; background: var(--gold); border: none; color: black; font-weight: 800; text-transform: uppercase; border-radius: 10px; cursor: pointer; transition: 0.3s; }
+        button:hover:not(:disabled) { background: #fff; transform: translateY(-2px); }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
     <header>
         <h1>STUDIO 7</h1>
-        <p class="subtitle">Vancouver's Premier Creative Suite</p>
+        <p class="subtitle">Vancouver Creative Space</p>
     </header>
 
     <div class="container">
         <section>
             <div class="gallery">
-                <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800" class="main-img" alt="Main Studio">
-                <img src="https://images.unsplash.com/photo-1520529277867-dbf8c5e0b340?auto=format&fit=crop&w=400" alt="Equipment">
-                <img src="https://images.unsplash.com/photo-1514320291840-2e0a9bf289ad?auto=format&fit=crop&w=400" alt="Lounge">
+                <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800" class="main-img">
+                <img src="https://images.unsplash.com/photo-1520529277867-dbf8c5e0b340?auto=format&fit=crop&w=400">
+                <img src="https://images.unsplash.com/photo-1514320291840-2e0a9bf289ad?auto=format&fit=crop&w=400">
             </div>
         </section>
 
         <section class="booking-card">
-            <h3>Secure Your Session</h3>
+            <h3>Book Your Session</h3>
             
-            <label>Name</label>
-            <input type="text" id="name" placeholder="Artist Name">
+            <label>Full Name</label>
+            <input type="text" id="name" placeholder="Artist / Client Name">
             
-            <label>Select Date</label>
+            <label>Date</label>
             <input type="date" id="datePicker">
             
             <div class="row">
@@ -73,11 +69,13 @@
                         <option value="2">2 Hours</option>
                         <option value="3">3 Hours</option>
                         <option value="4">4 Hours</option>
+                        <option value="5">5 Hours</option>
+                        <option value="6">6 Hours</option>
                     </select>
                 </div>
             </div>
             
-            <button id="bookBtn">Confirm Reservation</button>
+            <button id="bookBtn">Reserve Space</button>
         </section>
     </div>
 
@@ -100,54 +98,60 @@
 
         const datePicker = document.getElementById('datePicker');
         const timeSlot = document.getElementById('timeSlot');
+        const bookBtn = document.getElementById('bookBtn');
 
-        // Set minimum date to today
         datePicker.min = new Date().toISOString().split("T")[0];
 
-        // DYNAMIC TIME SLOT GENERATOR
         datePicker.onchange = () => {
-            const selectedDate = new Date(datePicker.value + "T00:00:00");
+            const dateParts = datePicker.value.split('-');
+            const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
             const day = selectedDate.getDay(); 
             
-            timeSlot.innerHTML = ''; // Clear options
+            timeSlot.innerHTML = '';
             
             if (day === 0 || day === 6) {
-                const opt = document.createElement('option');
-                opt.text = "Closed Weekends";
+                const opt = new Option("Weekends Closed", "");
                 timeSlot.add(opt);
+                bookBtn.disabled = true; // LOCK THE BUTTON
                 return;
             }
 
+            bookBtn.disabled = false; // UNLOCK BUTTON
             const startHour = 9;
-            const endHour = (day === 5) ? 22 : 20; // 10pm on Fri, 8pm others
+            const endHour = (day === 5) ? 22 : 20; 
 
             for (let i = startHour; i < endHour; i++) {
-                const hourLabel = i > 12 ? (i-12) + " PM" : i + " AM";
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.text = hourLabel;
+                let suffix = i >= 12 ? " PM" : " AM";
+                let displayHour = i > 12 ? i - 12 : i;
+                if (i === 0) displayHour = 12;
+                
+                const timeLabel = displayHour + ":00" + suffix;
+                const opt = new Option(timeLabel, timeLabel);
                 timeSlot.add(opt);
             }
         };
 
-        document.getElementById('bookBtn').onclick = async () => {
+        bookBtn.onclick = async () => {
             const name = document.getElementById('name').value;
             const date = datePicker.value;
-            const start = timeSlot.value;
+            const time = timeSlot.value;
             const length = document.getElementById('duration').value;
 
-            if(!name || !date || !start) return alert("Please complete the form");
+            // PREVENT SENDING IF CLOSED OR EMPTY
+            if(!name || !date || time === "" || time === "Weekends Closed") {
+                return alert("Please select a valid weekday and time.");
+            }
 
             try {
                 await addDoc(collection(db, "bookings"), {
                     customerName: name,
-                    date: date,
-                    startTime: start + ":00",
-                    duration: length + " hours",
-                    studioName: "Studio 7",
+                    bookingDate: date,
+                    startTime: time,
+                    duration: length + (length == 1 ? " hour" : " hours"),
+                    studio: "Studio 7",
                     timestamp: new Date()
                 });
-                alert("Booking Confirmed! See you at Studio 7.");
+                alert("Confirmed! Studio 7 is yours for " + length + " hour(s).");
             } catch (e) {
                 alert("Error: " + e.message);
             }
