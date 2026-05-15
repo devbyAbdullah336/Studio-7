@@ -3,30 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Studio 7 | Booking</title>
+    <title>Studio 7 | Premium Booking</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 50px; background: #1a1a1a; color: white; }
-        .card { background: #2a2a2a; padding: 20px; border-radius: 10px; display: inline-block; }
-        input, button { margin: 10px; padding: 10px; border-radius: 5px; border: none; }
-        button { background: #007bff; color: white; cursor: pointer; }
-        button:hover { background: #0056b3; }
+        :root { --gold: #d4af37; --dark: #121212; --card: #1e1e1e; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--dark); color: white; margin: 0; padding: 20px; }
+        header { text-align: center; padding: 40px 0; border-bottom: 1px solid #333; margin-bottom: 30px; }
+        h1 { font-size: 3rem; letter-spacing: 4px; color: var(--gold); margin: 0; }
+        
+        .container { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+
+        /* Gallery Styles */
+        .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .gallery img { width: 100%; height: 150px; object-fit: cover; border-radius: 8px; border: 1px solid #444; }
+        .gallery .main-img { grid-column: span 2; height: 300px; }
+
+        /* Booking Form */
+        .booking-card { background: var(--card); padding: 30px; border-radius: 15px; border-top: 4px solid var(--gold); }
+        input { width: 100%; padding: 12px; margin: 10px 0; background: #2a2a2a; border: 1px solid #444; color: white; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: var(--gold); border: none; color: black; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        button:hover { background: #f1c40f; transform: translateY(-2px); }
+        .hours-note { font-size: 0.8rem; color: #888; margin-top: 10px; line-height: 1.4; }
     </style>
 </head>
 <body>
 
-    <h1>Studio 7</h1>
-    <div class="card">
-        <h3>Book an Appointment</h3>
-        <input type="text" id="name" placeholder="Your Name"><br>
-        <input type="datetime-local" id="date"><br>
-        <button id="bookBtn">Confirm Booking</button>
+    <header>
+        <h1>STUDIO 7</h1>
+        <p>Premium Creative Space</p>
+    </header>
+
+    <div class="container">
+        <section>
+            <div class="gallery">
+                <img src="https://images.unsplash.com/photo-1598488035139-bdbb2231ce04?auto=format&fit=crop&w=800" class="main-img" alt="Main Studio">
+                <img src="https://images.unsplash.com/photo-1520529277867-dbf8c5e0b340?auto=format&fit=crop&w=400" alt="Equipment">
+                <img src="https://images.unsplash.com/photo-1514320291840-2e0a9bf289ad?auto=format&fit=crop&w=400" alt="Lounge">
+            </div>
+            <div class="hours-note">
+                <strong>Standard Hours:</strong> Mon-Thu: 9am - 8pm<br>
+                <strong>Extended Friday:</strong> 9am - 10pm<br>
+                <em>*Bookings outside these hours will be automatically declined.</em>
+            </div>
+        </section>
+
+        <section class="booking-card">
+            <h3>Reserve the Space</h3>
+            <label>Name</label>
+            <input type="text" id="name" placeholder="Enter your full name">
+            
+            <label>Date & Time</label>
+            <input type="datetime-local" id="date">
+            
+            <button id="bookBtn">CONFIRM BOOKING</button>
+            <div id="status"></div>
+        </section>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // Your Firebase info you just pasted
         const firebaseConfig = {
             apiKey: "AIzaSyAD6aJV973blSKgMe8X-VUrqAw3yUYxYO8",
             authDomain: "studiobooking-b570c.firebaseapp.com",
@@ -42,17 +79,37 @@
 
         document.getElementById('bookBtn').onclick = async () => {
             const name = document.getElementById('name').value;
-            const date = document.getElementById('date').value;
+            const dateInput = document.getElementById('date').value;
+            
+            if(!name || !dateInput) return alert("Please fill in all fields");
+
+            const selectedDate = new Date(dateInput);
+            const day = selectedDate.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+            const hour = selectedDate.getHours();
+
+            // LOGIC CHECK
+            let isAllowed = false;
+            
+            if (day >= 1 && day <= 4) { // Mon - Thu
+                if (hour >= 9 && hour < 20) isAllowed = true;
+            } else if (day === 5) { // Friday
+                if (hour >= 9 && hour < 22) isAllowed = true;
+            } else {
+                return alert("Studio 7 is currently closed on weekends.");
+            }
+
+            if (!isAllowed) {
+                return alert("Outside of operating hours! Please pick a time between 9am-8pm (10pm on Fridays).");
+            }
 
             try {
                 await addDoc(collection(db, "bookings"), {
                     customerName: name,
-                    appointmentDate: date,
+                    appointmentDate: dateInput,
                     timestamp: new Date()
                 });
-                alert("Booking sent to Studio 7 database!");
+                alert("Success! Your session at Studio 7 is reserved.");
             } catch (e) {
-                console.error("Error: ", e);
                 alert("Error: " + e.message);
             }
         };
