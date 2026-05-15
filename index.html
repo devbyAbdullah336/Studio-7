@@ -23,14 +23,13 @@
         
         label { display: block; margin-bottom: 10px; font-size: 0.8rem; font-weight: 700; color: #777; text-transform: uppercase; }
         
-        /* BIGGER CALENDAR STYLES */
         input#datePicker { 
             font-size: 1.2rem; 
             padding: 18px; 
             background: #333; 
             border: 2px solid var(--gold); 
             cursor: pointer;
-            color-scheme: dark; /* Makes the built-in calendar popup dark mode */
+            color-scheme: dark;
         }
         
         input, select { width: 100%; padding: 14px; margin-bottom: 20px; background: var(--input); border: 1px solid #333; color: white; border-radius: 10px; font-size: 1rem; box-sizing: border-box; }
@@ -42,9 +41,7 @@
             transition: all 0.3s ease; font-size: 1.1rem;
         }
         button:hover:not(:disabled) { background: #fff; transform: scale(1.02); }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; transform: none; }
-        
-        .loading-text { display: none; }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -69,7 +66,7 @@
             <label>Full Name</label>
             <input type="text" id="name" placeholder="Artist / Client Name">
             
-            <label>Select Date (Click below)</label>
+            <label>Select Date</label>
             <input type="date" id="datePicker">
             
             <div class="row">
@@ -86,8 +83,6 @@
                         <option value="2">2 Hours</option>
                         <option value="3">3 Hours</option>
                         <option value="4">4 Hours</option>
-                        <option value="5">5 Hours</option>
-                        <option value="6">6 Hours</option>
                     </select>
                 </div>
             </div>
@@ -100,7 +95,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAD6aJV973blSKgMe8X-VUrqAw3yUYxYO8",
@@ -122,16 +117,30 @@
 
         datePicker.min = new Date().toISOString().split("T")[0];
 
-        datePicker.onchange = () => {
-            const dateParts = datePicker.value.split('-');
+        datePicker.onchange = async () => {
+            const dateStr = datePicker.value;
+            const dateParts = dateStr.split('-');
             const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
             const day = selectedDate.getDay(); 
             
+            timeSlot.innerHTML = '<option>Checking availability...</option>';
+            bookBtn.disabled = true;
+
+            // 1. Fetch bookings already made for this specific date
+            const q = query(collection(db, "bookings"), where("bookingDate", "==", dateStr));
+            const querySnapshot = await getDocs(q);
+            const takenTimes = [];
+            querySnapshot.forEach(doc => {
+                // We only block times that are NOT denied
+                if(doc.data().status !== "denied") {
+                    takenTimes.push(doc.data().startTime);
+                }
+            });
+
             timeSlot.innerHTML = '';
             
             if (day === 0 || day === 6) {
                 timeSlot.add(new Option("Weekends Closed", ""));
-                bookBtn.disabled = true;
                 return;
             }
 
@@ -144,7 +153,16 @@
                 let displayHour = i > 12 ? i - 12 : i;
                 if (i === 0) displayHour = 12;
                 const timeLabel = displayHour + ":00" + suffix;
-                timeSlot.add(new Option(timeLabel, timeLabel));
+                
+                // 2. Only show the time if it's not in the 'takenTimes' list
+                if (!takenTimes.includes(timeLabel)) {
+                    timeSlot.add(new Option(timeLabel, timeLabel));
+                }
+            }
+
+            if (timeSlot.options.length === 0) {
+                timeSlot.add(new Option("Fully Booked", ""));
+                bookBtn.disabled = true;
             }
         };
 
@@ -154,11 +172,10 @@
             const time = timeSlot.value;
             const length = document.getElementById('duration').value;
 
-            if(!name || !date || !time || time === "Weekends Closed") {
+            if(!name || !date || !time || time === "" || time === "Weekends Closed") {
                 return alert("Please fill everything out correctly!");
             }
 
-            // ANTI-SPAM LOCK
             bookBtn.disabled = true;
             btnText.innerText = "Processing...";
 
@@ -169,17 +186,16 @@
                     startTime: time,
                     duration: length + (length == 1 ? " hour" : " hours"),
                     studio: "Studio 7",
+                    status: "pending",
                     timestamp: new Date()
                 });
                 
                 btnText.innerText = "Success!";
-                alert("Confirmed! Your session is booked.");
+                alert("Request sent! Check back later for confirmation.");
                 
-                // Keep it disabled for 5 seconds to prevent spamming
                 setTimeout(() => {
-                    btnText.innerText = "Reserve Space";
-                    bookBtn.disabled = false;
-                }, 5000);
+                    location.reload(); // Refresh to clear form and update slots
+                }, 2000);
 
             } catch (e) {
                 alert("Error: " + e.message);
