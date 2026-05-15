@@ -50,9 +50,9 @@
             </div>
             <div class="about-timings">
                 <strong>OPERATING HOURS</strong><br>
-                Mon - Thu: 9:00 AM — 9:00 PM<br>
-                Fri - Sun: 9:00 AM — 11:00 PM<br><br>
-                <em>All bookings are subject to approval. Our smart scheduler only shows available slots to ensure a seamless experience.</em>
+                Mon - Thu: 9:00 AM — 7:00 PM<br>
+                Fri - Sun: 9:00 AM — 10:00 PM<br><br>
+                <em>Reserve your session below. Our smart scheduler ensures bookings never exceed operating hours.</em>
             </div>
         </section>
 
@@ -116,10 +116,10 @@
 
         datePicker.min = new Date().toISOString().split("T")[0];
 
-        // GLOBAL CLOSING TIME HELPER
+        // NEW OPERATING HOURS HELPER
         function getClosingHour(day) {
-            if (day >= 5 || day === 0) return 23; // Fri, Sat, Sun: 11pm
-            return 21; // Mon - Thu: 9pm
+            if (day >= 5 || day === 0) return 22; // Fri, Sat, Sun: 10 PM
+            return 19; // Mon - Thu: 7 PM
         }
 
         datePicker.onchange = async () => {
@@ -151,14 +151,13 @@
                 const timeLabel = displayHour + ":00" + suffix;
                 
                 if (!takenTimes.includes(timeLabel)) {
-                    const opt = new Option(timeLabel, i); // Value is raw 24h hour
+                    const opt = new Option(timeLabel, i);
                     timeSlot.add(opt);
                 }
             }
             updateDurationOptions();
         };
 
-        // PREVENT BOOKING PAST CLOSING TIME
         function updateDurationOptions() {
             const startHour = parseInt(timeSlot.value);
             if (isNaN(startHour)) return;
@@ -170,7 +169,6 @@
             
             const maxAvailable = closingHour - startHour;
             
-            // Rebuild duration options up to 6 or the closing hour
             durationSelect.innerHTML = '';
             for (let i = 1; i <= Math.min(6, maxAvailable); i++) {
                 durationSelect.add(new Option(i + (i === 1 ? " Hour" : " Hours"), i));
@@ -187,7 +185,6 @@
 
             if(!name || !date || !rawHour) return alert("Please fill everything out!");
 
-            // Format hour for Firebase display
             let h = parseInt(rawHour);
             let suffix = h >= 12 ? " PM" : " AM";
             let displayH = h > 12 ? h - 12 : h;
