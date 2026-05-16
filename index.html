@@ -34,6 +34,10 @@
         .track-btn { background: transparent; border: 2px solid var(--gold); color: var(--gold); margin-top: 15px; }
         .track-btn:hover { background: var(--gold); color: black; }
 
+        .cancel-btn { background: #e74c3c; color: white; padding: 8px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; float: right; margin-top: -30px; font-size: 0.8rem; }
+        .cancel-btn:hover { background: #c0392b; }
+        .cancel-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+
         .disclaimer { background: rgba(212, 175, 55, 0.08); padding: 15px; border-radius: 10px; font-size: 0.8rem; color: #bbb; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2); line-height: 1.4; }
         .disclaimer b { color: var(--gold); display: block; margin-bottom: 5px; }
 
@@ -41,10 +45,11 @@
         .lookup-link a { color: #888; text-decoration: underline; font-size: 0.8rem; cursor: pointer; }
 
         #statusResults { margin-top: 15px; font-size: 0.9rem; }
-        .status-item { background: #222; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid var(--gold); }
+        .status-item { background: #222; padding: 15px; border-radius: 8px; margin-top: 10px; border-left: 4px solid var(--gold); min-height: 50px; }
         .stat-tag { font-weight: bold; text-transform: uppercase; font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; }
         .pending { background: #555; color: #fff; }
         .confirmed { background: #2ecc71; color: #000; }
+        .error-msg { font-size: 0.75rem; color: #e74c3c; display: block; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -75,15 +80,16 @@
                 
                 <div class="disclaimer">
                     <b>HOW IT WORKS:</b>
-                    After submitting, your request will be <u>Pending</u>. Come back to this site and click <b>Track Reservation</b> to see if you've been approved. 
-                    <small>(No automated emails are sent)</small>
+                    After submitting, your request will be listed as <u>Pending</u>. Come back to this site and click <b>Track Reservation</b> to see your approval status. Once your session is approved, you will be contacted directly via email to complete the setup.
+                    <br><br>
+                    <strong>* NO AUTOMATED EMAILS ARE SENT *</strong>
                 </div>
 
                 <label>Full Name</label>
                 <input type="text" id="name" placeholder="Artist Name">
                 
                 <label>Email Address</label>
-                <input type="email" id="email" placeholder="Required for status tracking">
+                <input type="email" id="email" placeholder="Required for tracking and contact">
 
                 <label>Select Date</label>
                 <input type="date" id="datePicker">
@@ -100,14 +106,16 @@
                 </div>
                 
                 <button id="bookBtn">Reserve Space</button>
-                <button class="track-btn" onclick="showLookup()">Track Reservation Status</button>
+                <button class="track-btn" onclick="showLookup()">Track / Cancel Reservation</button>
             </div>
 
             <div id="lookupSection" style="display:none;">
-                <h3>Status Tracker</h3>
+                <h3>Status Tracker & Cancellations</h3>
                 <div class="disclaimer">
-                    <b>CHECKING YOUR STATUS:</b>
-                    Enter the email you used to book. If your status is <b>Confirmed</b>, your session is officially locked in!
+                    <b>MANAGE RESERVATIONS:</b>
+                    Enter your email to check approval or cancel an existing request. Cancellations are only permitted up to <b>72 hours</b> before the appointment.
+                    <br><br>
+                    <strong>* NO AUTOMATED EMAILS ARE SENT *</strong>
                 </div>
                 <label>Registered Email</label>
                 <input type="email" id="lookupEmail" placeholder="email@example.com">
@@ -124,7 +132,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, query, where } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, query, where, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAD6aJV973blSKgMe8X-VUrqAw3yUYxYO8",
@@ -146,37 +154,56 @@
 
         datePicker.min = new Date().toISOString().split("T")[0];
 
-        // ADJUSTED CLOSING TIME HELPER TO 8 PM FOR MON-THU
         function getClosingHour(day) {
             return (day >= 5 || day === 0) ? 22 : 20; 
         }
 
         datePicker.onchange = async () => {
             const dateStr = datePicker.value;
+            if(!dateStr) return;
             const dateParts = dateStr.split('-');
             const selectedDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
             const day = selectedDate.getDay(); 
             
             timeSlot.innerHTML = '<option>Checking slots...</option>';
+            
             const q = query(collection(db, "bookings"), where("bookingDate", "==", dateStr));
             const querySnapshot = await getDocs(q);
-            const takenTimes = [];
-            querySnapshot.forEach(doc => { if(doc.data().status !== "denied") takenTimes.push(doc.data().startTime); });
+            
+            const takenHours = [];
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                if(data.status !== "denied") {
+                    const start = parseInt(data.rawStartHour);
+                    const hoursLength = parseInt(data.durationValue);
+                    for (let j = start; j < (start + hoursLength); j++) {
+                        takenHours.push(j);
+                    }
+                }
+            });
 
             timeSlot.innerHTML = '';
             for (let i = 9; i < getClosingHour(day); i++) {
-                let suffix = i >= 12 ? " PM" : " AM";
-                let displayHour = i > 12 ? i - 12 : (i === 0 ? 12 : i);
-                const timeLabel = displayHour + ":00" + suffix;
-                if (!takenTimes.includes(timeLabel)) timeSlot.add(new Option(timeLabel, i));
+                if (!takenHours.includes(i)) {
+                    let suffix = i >= 12 ? " PM" : " AM";
+                    let displayHour = i > 12 ? i - 12 : (i === 0 ? 12 : i);
+                    timeSlot.add(new Option(displayHour + ":00" + suffix, i));
+                }
+            }
+            if(timeSlot.options.length === 0) {
+                timeSlot.add(new Option("Fully Booked Today", ""));
             }
             updateDurationOptions();
         };
 
         function updateDurationOptions() {
             const startHour = parseInt(timeSlot.value);
+            if(isNaN(startHour)) { durationSelect.innerHTML = ''; return; }
+            
             const selectedDate = new Date(datePicker.value.replace(/-/g, '\/'));
-            const maxAvailable = getClosingHour(selectedDate.getDay()) - startHour;
+            const closingHour = getClosingHour(selectedDate.getDay());
+            const maxAvailable = closingHour - startHour;
+            
             durationSelect.innerHTML = '';
             for (let i = 1; i <= Math.min(6, maxAvailable); i++) {
                 durationSelect.add(new Option(i + (i === 1 ? " Hour" : " Hours"), i));
@@ -188,20 +215,22 @@
             const name = document.getElementById('name').value;
             const email = document.getElementById('email').value;
             const rawHour = timeSlot.value;
-            if(!name || !email || !rawHour) return alert("Please complete the form!");
+            const length = durationSelect.value;
+            if(!name || !email || !rawHour || !length) return alert("Please complete the form!");
 
             let h = parseInt(rawHour);
             const formattedTime = (h > 12 ? h - 12 : (h === 0 ? 12 : h)) + ":00" + (h >= 12 ? " PM" : " AM");
-
             bookBtn.disabled = true;
 
             try {
                 await addDoc(collection(db, "bookings"), {
                     customerName: name,
-                    customerEmail: email.toLowerCase(),
+                    customerEmail: email.toLowerCase().trim(),
                     bookingDate: datePicker.value,
                     startTime: formattedTime,
-                    duration: durationSelect.value + " hours",
+                    rawStartHour: h,
+                    durationValue: parseInt(length),
+                    duration: length + (length == 1 ? " hour" : " hours"),
                     status: "pending",
                     timestamp: new Date()
                 });
@@ -220,7 +249,7 @@
         };
 
         document.getElementById('lookupBtn').onclick = async () => {
-            const email = document.getElementById('lookupEmail').value.toLowerCase();
+            const email = document.getElementById('lookupEmail').value.toLowerCase().trim();
             const resultsDiv = document.getElementById('statusResults');
             resultsDiv.innerHTML = 'Searching...';
 
@@ -233,16 +262,43 @@
             }
 
             resultsDiv.innerHTML = '';
-            querySnapshot.forEach(doc => {
-                const data = doc.data();
+            const now = new Date();
+
+            querySnapshot.forEach(docSnapshot => {
+                const data = docSnapshot.data();
+                const id = docSnapshot.id;
+                
+                // 72-HOUR CALCULATION LOGIC
+                const dateParts = data.bookingDate.split('-');
+                const apptDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], data.rawStartHour, 0, 0);
+                
+                const timeDiffMs = apptDate.getTime() - now.getTime();
+                const hoursLeft = timeDiffMs / (1000 * 60 * 60);
+                
+                const canCancel = hoursLeft >= 72;
+
                 resultsDiv.innerHTML += `
-                    <div class="status-item">
+                    <div class="status-item" id="block-${id}">
+                        <button class="cancel-btn" id="btn-cancel-${id}" ${canCancel ? '' : 'disabled'} onclick="cancelReservation('${id}')">Cancel</button>
                         <strong>Date: ${data.bookingDate}</strong><br>
-                        Time: ${data.startTime}<br>
+                        Time: ${data.startTime} (${data.duration})<br>
                         Status: <span class="stat-tag ${data.status}">${data.status}</span>
+                        ${canCancel ? '' : '<span class="error-msg">Locked (Under 72h notice)</span>'}
                     </div>
                 `;
             });
+        };
+
+        window.cancelReservation = async (id) => {
+            if (confirm("Are you sure you want to cancel this booking? This cannot be undone.")) {
+                try {
+                    await deleteDoc(doc(db, "bookings", id));
+                    alert("Booking cancelled successfully.");
+                    document.getElementById(`block-${id}`).remove();
+                } catch (e) {
+                    alert("Error cancelling booking: " + e.message);
+                }
+            }
         };
     </script>
 </body>
