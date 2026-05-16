@@ -35,8 +35,8 @@
         .track-btn:hover { background: var(--gold); color: black; }
 
         .cancel-btn { background: #e74c3c; color: white; padding: 8px 12px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; float: right; margin-top: -30px; font-size: 0.8rem; }
-        .cancel-btn:hover { background: #c0392b; }
-        .cancel-btn:disabled { background: #444; color: #888; cursor: not-allowed; }
+        .cancel-btn:hover { background: #fff; color: #e74c3c; border: 1px solid #e74c3c; }
+        .cancel-btn:disabled { background: #444; color: #888; cursor: not-allowed; border: none; }
 
         .disclaimer { background: rgba(212, 175, 55, 0.08); padding: 15px; border-radius: 10px; font-size: 0.8rem; color: #bbb; margin-bottom: 20px; border: 1px solid rgba(212, 175, 55, 0.2); line-height: 1.4; }
         .disclaimer b { color: var(--gold); display: block; margin-bottom: 5px; }
@@ -49,7 +49,7 @@
         .stat-tag { font-weight: bold; text-transform: uppercase; font-size: 0.7rem; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; }
         .pending { background: #555; color: #fff; }
         .confirmed { background: #2ecc71; color: #000; }
-        .error-msg { font-size: 0.75rem; color: #e74c3c; display: block; margin-top: 5px; }
+        .error-msg { font-size: 0.75rem; color: #e74c3c; display: block; margin-top: 5px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -113,7 +113,7 @@
                 <h3>Status Tracker & Cancellations</h3>
                 <div class="disclaimer">
                     <b>MANAGE RESERVATIONS:</b>
-                    Enter your email to check approval or cancel an existing request. Cancellations are only permitted up to <b>72 hours</b> before the appointment.
+                    You can view or cancel your request here at any time, provided it is done at least <b>72 hours</b> before your scheduled start time.
                     <br><br>
                     <strong>* NO AUTOMATED EMAILS ARE SENT *</strong>
                 </div>
@@ -268,13 +268,18 @@
                 const data = docSnapshot.data();
                 const id = docSnapshot.id;
                 
-                // 72-HOUR CALCULATION LOGIC
+                // SAFE TIME ZONE PARSING (YYYY, MM-1, DD, HH)
                 const dateParts = data.bookingDate.split('-');
-                const apptDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], data.rawStartHour, 0, 0);
+                const apptDate = new Date(
+                    parseInt(dateParts[0]), 
+                    parseInt(dateParts[1]) - 1, 
+                    parseInt(dateParts[2]), 
+                    parseInt(data.rawStartHour), 
+                    0, 0
+                );
                 
                 const timeDiffMs = apptDate.getTime() - now.getTime();
                 const hoursLeft = timeDiffMs / (1000 * 60 * 60);
-                
                 const canCancel = hoursLeft >= 72;
 
                 resultsDiv.innerHTML += `
@@ -283,14 +288,14 @@
                         <strong>Date: ${data.bookingDate}</strong><br>
                         Time: ${data.startTime} (${data.duration})<br>
                         Status: <span class="stat-tag ${data.status}">${data.status}</span>
-                        ${canCancel ? '' : '<span class="error-msg">Locked (Under 72h notice)</span>'}
+                        ${canCancel ? '' : '<span class="error-msg">Cancellation Locked (Under 72h notice)</span>'}
                     </div>
                 `;
             });
         };
 
         window.cancelReservation = async (id) => {
-            if (confirm("Are you sure you want to cancel this booking? This cannot be undone.")) {
+            if (confirm("Are you sure you want to cancel this booking? This cannot be undone and will open the time slot back up instantly.")) {
                 try {
                     await deleteDoc(doc(db, "bookings", id));
                     alert("Booking cancelled successfully.");
