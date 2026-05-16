@@ -63,7 +63,7 @@
             </div>
             <div class="about-timings">
                 <strong>OPERATING HOURS</strong><br>
-                Mon - Thu: 9:00 AM — 7:00 PM<br>
+                Mon - Thu: 9:00 AM — 8:00 PM<br>
                 Fri - Sun: 9:00 AM — 10:00 PM<br><br>
                 <em>Reserve your session below. Our scheduler only shows available slots.</em>
             </div>
@@ -146,8 +146,9 @@
 
         datePicker.min = new Date().toISOString().split("T")[0];
 
+        // ADJUSTED CLOSING TIME HELPER TO 8 PM FOR MON-THU
         function getClosingHour(day) {
-            return (day >= 5 || day === 0) ? 22 : 19;
+            return (day >= 5 || day === 0) ? 22 : 20; 
         }
 
         datePicker.onchange = async () => {
